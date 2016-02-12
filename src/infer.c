@@ -2,7 +2,15 @@
 
 void infer (char* odir, sctm_data* data, sctm_params* params,
 		sctm_latent* latent, sctm_counts* counts) {
-	int iter;
+	int iter, d;
+	double* docLogLikelihood = (double*) malloc(sizeof(double)*(data->D));
+	double token = 0;
+	double likelihoodCount = 0;
+
+	for(d=0; d<data->D; d++){
+		docLogLikelihood[d] = 0;
+	}
+
 	for (iter = 1; iter < params->ITER+1; iter++) {
 
 		if (params->word_sparsity > 0 && params->trte == 0)
@@ -29,6 +37,12 @@ void infer (char* odir, sctm_data* data, sctm_params* params,
 			printf("\n%4d of %d iterations done", iter, params->ITER);
 			assignment(odir, data, params, latent, counts, iter);
 			fflush(stdout);
+
+			if(params->trte==1){
+				likelihoodCount += 1;
+				compute_likelihood(data, params, latent, counts, docLogLikelihood, &token);
+			}
+
 //			if (params->trte == 1)
 //				compute_perplexity(odir, data, params, latent, counts);
 		}
@@ -36,6 +50,9 @@ void infer (char* odir, sctm_data* data, sctm_params* params,
 	}
 
 	assignment(odir, data, params, latent, counts, iter);
+	if (params->trte == 1)
+		compute_perplexity(odir, data, docLogLikelihood, likelihoodCount);
+
 //	if (params->trte == 1)
 //		compute_perplexity(odir, data, params, latent, counts);
 

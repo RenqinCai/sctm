@@ -12,6 +12,34 @@ void ini_vars(sctm_data* data, sctm_params* params, sctm_latent* latent,
 
 }
 
+// void ini_vars_SingleDoc(documents *doc, sctm_params* params, sctm_latent* latent, 
+// 	sctm_counts* counts){
+// 	ini_b_z_SingleDoc(doc, params, latent, counts);
+
+// 	if(params->CMNTS)
+// 		ini_y_xi_t_SingleDoc(doc, params, latent, counts);
+// }
+
+// void ini_b_z_SingleDoc(documents *doc, sctm_params* params, sctm_latent* latent, 
+// 	sctm_counts* counts){
+// 	int i, n, v, j, k, l;
+
+// 	d = 0;
+// 	for(i=0; i<doc->S; i++){
+// 		sentence* sent = &(doc->sents[i]);
+// 		for(n=0; n<sent->N; n++){
+// 			v = sent->words[n];
+
+// 			counts->n_jkv[][i]
+// 		}
+// 	}
+// }
+
+// void ini_y_xi_t_SingleDoc(documents *doc, sctm_params* params, sctm_latent* latent,
+// 	sctm_counts* counts){
+
+// }
+
 void ini_phi(sctm_data* data, sctm_params* params, sctm_latent* latent,
 		sctm_counts* counts) {
 	int k, v, sum;

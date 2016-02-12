@@ -187,6 +187,89 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 
 }
 
+double compute_perplexity(char* odir, sctm_data* data, double *docLogLikelihood, int count){
+	int d = 0;
+	double totalDocLogLikelihood = 0;
+	double perplexity = 0;
+	double totalWords = 0;
+
+	for(d=0; d<data->D; d++){
+		docLogLikelihood[d] = docLogLikelihood[d]-log(count);
+		totalDocLogLikelihood += docLogLikelihood[d];
+		documents *doc = &(data->docs[d]);
+		totalWords += doc->N;
+	}
+
+	perplexity = totalDocLogLikelihood/totalWords;
+	perplexity = exp(-perplexity);
+
+	return perplexity;
+}
+
+double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token){
+	int d=0, i=0, c=0;
+	double likelihood=0;
+	double beta, like, theta, eps;
+
+	for(d=0; d<data->D; d++){
+		documents *doc = &(data->docs[d]);
+		likelihood = 0;
+		for(i=0; i<doc->S; i++){
+			sentence *sent = &(doc->sents[i]);
+			for(n=0; n<sent->N; n++){
+				like = 0;
+				for (k=0; k < params->K; k++) {
+					v = sent->words[n];
+					j = latent->b[d][i][n];
+
+					if (params->trte == 1) beta = latent->beta[k][v];
+					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+
+					if(counts->n_iv[d][j][k] < 0 || counts->n_ikv[d][j] <= 0) debug("in lik djk 0");
+
+					if (counts->n_ikv[d][j] == 0) continue;
+					theta = counts->n_iv[d][j][k]*1.0 / counts->n_ikv[d][j];
+					like += beta*theta;
+				}
+				if (like < eps) {
+					printf("like:%lf\n",like);
+					//debug("like too small");
+				}
+				likelihood += log(like + eps);
+			
+			}
+		}
+
+		for(c=0; c<doc->C; c++){
+			comment* cmnt = &(doc->cmnts[c]);
+			for(n=0; n<cmnt->N; n++){
+				like = 0;
+				k = latent->y[d][i][n];
+				v = cmnt->words[n];
+				t = latent->t[d][i][n];
+				if (t == 0) k = params->K;
+				if (params->trte == 1) beta = latent->beta[k][v];
+				else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+
+				if(t==1 && (counts->m[d][i][k] < 0 || counts->m_k[d][i] <= 0)) debug("in lik djk 0");
+
+				like += beta;
+
+				//}
+				if (like < eps) {
+					printf("like:%lf\n",like);
+					debug("like too small");
+				}
+				likelihood += log(like + eps);
+			}
+		}
+
+		if(docLogLikelihood[d]==0)
+			docLogLikelihood[d] = likelihood;
+		else
+			docLogLikelihood[d] = log(exp(docLogLikelihood[d])+exp(likelihood));
+	}
+}
 
 /*
 double compute_perplexity(char* odir, sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts) {
