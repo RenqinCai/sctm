@@ -232,6 +232,7 @@ double logSum(double log_a, double log_b){
 double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token){
 	int d=0, i=0, c=0, n, k, j, v, t;
 	double likelihood;
+	double tempLike; 
 	double totalLikelihood;
 	int wordNum = 0;
 	double beta, like, theta, eps;
@@ -281,27 +282,41 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 				wordNum += 1;
 				like = 0;
 				
-				// for(k=0; k<params->K+1; k++)
-				k = latent->y[d][i][n];
+				for(k=0; k<params->K+1; k++){
+					// k = latent->y[d][i][n];
+					tempLike = 0;
+					v = cmnt->words[n];
+					t = latent->t[d][i][n];
+					
+					// if (t == 0) k = params->K;
+					if (params->trte == 1) beta = latent->beta[k][v];
+					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
 
-				v = cmnt->words[n];
-				t = latent->t[d][i][n];
-				
-				if (t == 0) k = params->K;
-				if (params->trte == 1) beta = latent->beta[k][v];
-				else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+					if(t==1 && (counts->m[d][i][k] < 0 || counts->m_k[d][i] <= 0)) debug("in lik djk 0");
 
-				if(t==1 && (counts->m[d][i][k] < 0 || counts->m_k[d][i] <= 0)) debug("in lik djk 0");
+					if(k==params->K){
+						theta = (cmnt->N-counts->m_1k[d][i])*1.0/cmnt->N;
+					}	// theta = (cmnt->N-counts->m_1k[d][i]+eps)*1.0/(cmnt->N+eps*(params->K+1));
+					else{
+						theta = (counts->m_1[d][i][k])*1.0/cmnt->N;
+						// theta = (counts->m_1[d][i][k]+eps)*1.0/(cmnt->N+eps*(params->K+1));
+					}
 
-				// theta = 
+					// tempLike = log(theta)+log(beta);
+					// printf("tempLike:%lf\n",tempLike);
+					// if(like=0)
+					// 	like = tempLike;
+					// else 
+					// 	like = logSum(like, tempLike);
+					like += beta*theta;
+					// printf("tempLike:%lf \t theta:%lf \t beta:%lf\n", like, theta, beta);
 
-				like += theta*beta;
-
-				// }
+				}
 				if (like < eps) {
 					printf("like:%lf\n",like);
 					debug("like too small");
 				}
+				// likelihood += like;
 				likelihood += log(like + eps);
 			}
 		}
