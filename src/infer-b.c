@@ -3,7 +3,7 @@
 void infer_b(sctm_data* data, sctm_params* params, sctm_latent* latent,
 		sctm_counts* counts) {
 	int d, i, n, j, k, l;
-	double p, p1, p2, p4, r;
+	double p, p1, p2, p4, p5, p6, r;
 	int p3;
 	double* P; //int sum;
 	for (d = 0; d < data->D; d++) {
@@ -22,6 +22,7 @@ void infer_b(sctm_data* data, sctm_params* params, sctm_latent* latent,
 					counts->n_kvc[d][i][l]--;
 
 				p4 = 1;
+				p6 = 0;
 				for (j = 0; j < doc->J; j++) {
 
 					p1 = params->alpha
@@ -39,13 +40,16 @@ void infer_b(sctm_data* data, sctm_params* params, sctm_latent* latent,
 						p1 = (params->b_tau + counts->n_kv[d][i][j])
 								/ (params->b_tau + params->b_iota + p3);
 
+						p5 = p1;
 						p1 *= p4;
-						p4 *= (1 - p1);
+						p4 *= (1 - p5);
+						p6 += p1;
 						//p5 += p1;
 					} else {
 
-						p3 = counts->n_kvc[d][i][j];
-						p1 = p4;
+						// p3 = counts->n_kvc[d][i][j];
+						// p1 = p4;
+						p1 = 1-p6;
 
 						if (p1 > 1 || p1 < 0) {
 							debug("in trunc b 2 err");

@@ -9,8 +9,8 @@ sctm_params* get_params(int trte, int topics, char* modelName) {
 
 	params->sents_sparsity = 1;
 
-	params->ITER = 500;
-	params->burn_in = 400;
+	params->ITER = 100;
+	params->burn_in = 50;
 	params->save_state = 10; //interval between saved states
 	params->save_step = 10;
 	

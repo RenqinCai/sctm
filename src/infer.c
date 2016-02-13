@@ -4,11 +4,15 @@ void infer (char* odir, sctm_data* data, sctm_params* params,
 		sctm_latent* latent, sctm_counts* counts) {
 	int iter, d;
 	double* docLogLikelihood = (double*) malloc(sizeof(double)*(data->D));
-	double token = 0;
-	double likelihoodCount = 0;
+	int token = 0;
+	int likelihoodCount; 
+
+	likelihoodCount = 0;
+
+	printf("\ninfer---likelihoodcount%d", likelihoodCount);
 
 	for(d=0; d<data->D; d++){
-		docLogLikelihood[d] = 0;
+		*(docLogLikelihood+d) = 0;
 	}
 
 	for (iter = 1; iter < params->ITER+1; iter++) {
@@ -33,16 +37,29 @@ void infer (char* odir, sctm_data* data, sctm_params* params,
 			infer_t(data, params, latent, counts);
 		}
 
+		// printf("end infer....");
 		if (iter % params->save_step == 0 || iter == 1 || (iter >= params->burn_in && (iter-params->burn_in)%params->save_state == 0)) {
-			printf("\n%4d of %d iterations done", iter, params->ITER);
-			assignment(odir, data, params, latent, counts, iter);
-			fflush(stdout);
+			// printf("\nsave....");
+			// fflush(stdout);
 
-			if(params->trte==1){
+			// printf("\n%4diterations", iter);
+			// printf("\n%dtotal iterations", params->ITER);
+			printf("\n%4d of %d iterations done", iter, params->ITER);
+			
+			// if(params->trte==1){
+
+			// 	// printf("compute_likelihood");
+			// 	// fflush(stdout);
+
 				likelihoodCount += 1;
 				compute_likelihood(data, params, latent, counts, docLogLikelihood, &token);
-			}
+				printf("\nlikelihoodcount%d", likelihoodCount);
+				fflush(stdout);
 
+			// }
+
+			assignment(odir, data, params, latent, counts, iter);
+			fflush(stdout);
 //			if (params->trte == 1)
 //				compute_perplexity(odir, data, params, latent, counts);
 		}
@@ -50,11 +67,22 @@ void infer (char* odir, sctm_data* data, sctm_params* params,
 	}
 
 	assignment(odir, data, params, latent, counts, iter);
-	if (params->trte == 1)
-		compute_perplexity(odir, data, docLogLikelihood, likelihoodCount);
+	if (params->trte == 1){
 
-//	if (params->trte == 1)
-//		compute_perplexity(odir, data, params, latent, counts);
+
+		// likelihoodCount += 1;
+		// compute_likelihood(data, params, latent, counts, docLogLikelihood, &token);
+		// printf("\nlikelihoodcount%d", likelihoodCount);
+		// fflush(stdout);
+
+			// }
+		printf("\nlikelihoodCount%d", likelihoodCount);
+		compute_perplexity(odir, data, docLogLikelihood, &likelihoodCount);
+	}
+
+
+	// if (params->trte == 1)
+	// 	compute_perplexity(odir, data, params, latent, counts, docLogLikelihood);
 
 
 }
