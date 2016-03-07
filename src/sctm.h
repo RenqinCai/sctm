@@ -41,7 +41,8 @@ typedef struct {
 	double **beta, //topic, word
 			***xi_prob, //doc, cmnt, sent
 			***y_dist, //doc, cmnt, topic
-			***z_dist; //doc, sent, topic
+			***z_dist, //doc, sent, topic
+			**z_distDoc; //doc, topic
 } sctm_latent;
 
 typedef struct {

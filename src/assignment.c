@@ -5,11 +5,13 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 		sctm_latent* latent, sctm_counts* counts, int iter) {
 
 	int d, i, n, k, a, c, j, v, sum, state;
+	int totalWords;//debug
 
 	char fname[500];
 	char dir[1000];
 
 	FILE *fbeta=NULL, *fz_dist;
+	FILE *fz_distDoc = NULL;
 //	FILE *fz, *fb , *fphi;
 //	FILE *fm, *fm_k, *fm_1, *fm_1k;
 
@@ -36,15 +38,26 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 	else sprintf(fname, "%s/z_dist_test.txt", dir);
 	fz_dist = fopen(fname, "w");
 	
+	if(params->trte == 0) sprintf(fname, "%s/z_distDoc.txt", dir);
+	else sprintf(fname, "%s/z_distDoc_test.txt", dir);
+	fz_distDoc = fopen(fname, "w");
+
 	double* z_dist = (double*) malloc(sizeof(double)*params->K);
+	double* z_distDoc = (double*) malloc(sizeof(double)*params->K);
+
 	for (k=0; k < params->K; k++) z_dist[k] = 0.;
+	for(k=0; k<params->K; k++) z_distDoc[k] = 0.;
 
 	for (d = 0; d < data->D; d++) {
+		totalWords = 0;
+
 		documents* doc = &(data->docs[d]);
 
 //		fprintf(fz, "%d %d\n", d + 1, doc->S);
 //		fprintf(fb, "%d %d\n", d + 1, doc->S);
 		fprintf(fz_dist, "%d %d\n", d + 1, doc->S);
+		fprintf(fz_distDoc, "%d\n", d + 1);
+
 
 		for (i = 0; i < doc->S; i++) {
 			sentence* sent = &(doc->sents[i]);
@@ -53,7 +66,9 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 				j = latent->b[d][i][n];
 //				fprintf(fz, "%d ", k);
 //				fprintf(fb, "%d ", j);
+				z_distDoc[k] += 1;
 				z_dist[k] += 1;
+				totalWords += 1;
 			}
 //			fprintf(fz, "\n");
 //			fprintf(fb, "\n");
@@ -68,12 +83,29 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 			}
 			fprintf(fz_dist, "\n");
 		}
+
+		for(k=0; k<params->K; k++){
+			if(state > 0 || iter == params->burn_in){
+				latent->z_distDoc[d][k] = (state*latent->z_distDoc[d][k]+z_distDoc[k]/totalWords)/(state+1);
+				fprintf(fz_distDoc, "%.4f\n", latent->z_distDoc[d][k]);
+			}
+			else if(iter > params->ITER) fprintf(fz_distDoc, "%.4f ", latent->z_distDoc[d][k]);
+			else fprintf(fz_distDoc, "%.4f\n", z_distDoc[k]/totalWords);
+
+			z_distDoc[k] = 0.;
+		}
+
 //		fprintf(fz, "\n");
 //		fprintf(fb, "\n");
 		fprintf(fz_dist, "\n");
+		fprintf(fz_distDoc, "\n");
+
 	}
 //	fclose(fz);
 //	fclose(fb);
+	fclose(fz_distDoc);
+	free(z_distDoc);
+	
 	fclose(fz_dist);
 	free(z_dist);
 
@@ -230,7 +262,7 @@ double logSum(double log_a, double log_b){
 }
 
 double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token){
-	int d=0, i=0, c=0, n, k, j, v, t;
+	int d=0, i=0, c=0, n, k, j, v, t, m,p;
 	double likelihood;
 	double tempLike; 
 	double totalLikelihood;
@@ -242,42 +274,91 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 	// for(d=0; d<data->D; d++){
 	// 	printf("docLogLikelihood   %.3f\n", *(docLogLikelihood+d));
 	// }
-
+	
 	for(d=0; d<data->D; d++){
 		documents *doc = &(data->docs[d]);
 		likelihood = 0;
+
 		for(i=0; i<doc->S; i++){
 			sentence *sent = &(doc->sents[i]);
+
 			for(n=0; n<sent->N; n++){
 				wordNum += 1;
 				like = 0;
-				for (k=0; k < params->K; k++) {
-					v = sent->words[n];
-					j = latent->b[d][i][n];
+				v = sent->words[n];
+				for(k=0; k<params->K; k++){
+					theta = 0;
+					for(j=0; j<doc->J; j++){
+						if(counts->n_ikv[d][j]==0)
+							continue;
+						theta += counts->n_iv[d][j][k]*1.0 *counts->n_kv[d][i][j]/ (counts->n_ikv[d][j]*counts->n_jkv[d][i]);
+					}
+
 
 					if (params->trte == 1) beta = latent->beta[k][v];
 					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
 
-					if(counts->n_iv[d][j][k] < 0 || counts->n_ikv[d][j] <= 0) debug("in lik djk 0");
-
-					if (counts->n_ikv[d][j] == 0) continue;
-					theta = counts->n_iv[d][j][k]*1.0 / counts->n_ikv[d][j];
 					like += beta*theta;
 				}
-				if (like < eps) {
-					printf("like:%lf\n",like);
-					//debug("like too small");
+				
+	
+				if(like < eps){
+					like = like+eps;
+					printf("parent like");
 				}
-				likelihood += log(like + eps);
+				likelihood += log(like);
+				// likelihood += log(like + eps);
+				// printf("word\n");
 			}
-			
+		
 		}
+		// printf("likelihood%lf\n", likelihood);
 
 
-		printf("parent like:%lf\n",likelihood);
-		for(i=0; i<doc->C; i++){
+	// for(d=0; d<data->D; d++){
+	// 	documents *doc = &(data->docs[d]);
+	// 	likelihood = 0;
+	// 	for(i=0; i<doc->S; i++){
+	// 		sentence *sent = &(doc->sents[i]);
+	// 		for(n=0; n<sent->N; n++){
+	// 			wordNum += 1;
+	// 			like = 0;
+	// 			for (k=0; k < params->K; k++) {
+	// 				v = sent->words[n];
+	// 				for(j=0; j)
+	// 				j = latent->b[d][i][n];
+
+	// 				if (params->trte == 1) beta = latent->beta[k][v];
+	// 				else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+
+	// 				if(counts->n_iv[d][j][k] < 0 || counts->n_ikv[d][j] <= 0) debug("in lik djk 0");
+
+	// 				if (counts->n_ikv[d][j] == 0) continue;
+	// 				theta = counts->n_iv[d][j][k]*1.0 / counts->n_ikv[d][j];
+	// 				like += beta*theta;
+	// 			}
+	// 			if (like < eps) {
+	// 				printf("parent like:%lf\n",like);
+	// 				//debug("like too small");
+	// 			}
+	// 			likelihood += log(like + eps);
+	// 		}
 			
+	// 	}
+		// printf("parent like:%lf\n",likelihood);
+		for(i=0; i<doc->C; i++){
+			double tProb = 0;
 			comment* cmnt = &(doc->cmnts[i]);
+
+			for(n=0; n<cmnt->N; n++){
+				tProb += latent->t[d][i][n];
+			}
+
+			// if(tProb == (double)counts->m_1k[d][i])
+			// 	printf("ok");
+
+			tProb = tProb*1.0/cmnt->N;
+
 			for(n=0; n<cmnt->N; n++){
 				wordNum += 1;
 				like = 0;
@@ -286,39 +367,53 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 					// k = latent->y[d][i][n];
 					tempLike = 0;
 					v = cmnt->words[n];
-					t = latent->t[d][i][n];
+
+					// for(t=0; t<2; t++){
+					// 	if(t==0)
+					// 		theta = (counts->m_1[d][i][k])*1.0/cmnt->N)*(latent->t[d][i]*1.0/cmnt->N);
+					// 	else
+					// 		theta += latent->t[d][i]*1.0/cmnt->N;
+					// 	t = latent->t[d][i][n];
+					// }
 					
 					// if (t == 0) k = params->K;
 					if (params->trte == 1) beta = latent->beta[k][v];
 					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
 
-					if(t==1 && (counts->m[d][i][k] < 0 || counts->m_k[d][i] <= 0)) debug("in lik djk 0");
+					// if(t==1 && (counts->m[d][i][k] < 0 || counts->m_k[d][i] <= 0)) debug("in lik djk 0");
 
 					if(k==params->K){
-						theta = (cmnt->N-counts->m_1k[d][i])*1.0/cmnt->N;
+						theta = 1-tProb;
+						// printf("theta 0 too small%lf", theta);
 					}	// theta = (cmnt->N-counts->m_1k[d][i]+eps)*1.0/(cmnt->N+eps*(params->K+1));
 					else{
-						theta = (counts->m_1[d][i][k])*1.0/cmnt->N;
+						theta = (tProb)*(counts->m_1[d][i][k]*1.0/counts->m_1k[d][i]);
+						// printf("theta 1 too small%lf", theta);
+
 						// theta = (counts->m_1[d][i][k]+eps)*1.0/(cmnt->N+eps*(params->K+1));
 					}
 
-					// tempLike = log(theta)+log(beta);
-					// printf("tempLike:%lf\n",tempLike);
-					// if(like=0)
-					// 	like = tempLike;
-					// else 
-					// 	like = logSum(like, tempLike);
+				// tempLike = log(theta)+log(beta);
+				// printf("tempLike:%lf\n",tempLike);
+				// if(like=0)
+				// 	like = tempLike;
+				// else 
+				// 	like = logSum(like, tempLike);
+					
 					like += beta*theta;
-					// printf("tempLike:%lf \t theta:%lf \t beta:%lf\n", like, theta, beta);
+				// like += beta;
+				// printf("tempLike:%lf \t theta:%lf \t beta:%lf\n", like, theta, beta);
+				}
 
-				}
+			
 				if (like < eps) {
-					printf("like:%lf\n",like);
-					debug("like too small");
+					printf("child like:%lf\n",like);
+					debug("child like too small");
 				}
-				// likelihood += like;
+		// likelihood += like;
 				likelihood += log(like + eps);
 			}
+		
 		}
 
 		// totalLikelihood += likelihood;

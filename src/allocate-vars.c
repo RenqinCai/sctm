@@ -101,6 +101,16 @@ void allocate_vars(sctm_data* data, sctm_params* params,
 	latent->y_dist = (double***) malloc(sizeof(double**) * data->D);
 	latent->z_dist = (double***) malloc(sizeof(double**) * data->D);
 
+	latent->z_distDoc = (double**) malloc(sizeof(double*) * data->D);
+
+	for(d=0; d<data->D; d++){
+		documents* doc = &(data->docs[d]);
+		latent->z_distDoc[d] = (double*) malloc(sizeof(double*)*K);
+		for(k=0; k<params->K; k++){
+			latent->z_distDoc[d][k] = 0;
+		}
+	}
+
 	for (d = 0; d < data->D; d++) {
 		documents* doc = &(data->docs[d]);
 		latent->z[d] = (int**) malloc(sizeof(int*) * doc->S);
