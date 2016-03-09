@@ -217,6 +217,8 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 		free(beta);
 	}
 
+
+
 }
 
 double compute_perplexity(char* odir, sctm_data* data, double *docLogLikelihood, int *count){
@@ -259,6 +261,274 @@ double logSum(double log_a, double log_b){
 	else 
 		return log_b+log(1 + exp(log_a-log_b));
 
+}
+
+void printChild4Stn(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts){
+	int d, i, n, k, a, c, j, v, sum, state;
+
+	//[d][s][c]
+	double ***stnLikelihood; 
+	char fname[500];
+	char dir[1000];
+
+	FILE *fChild = NULL;
+
+	stnLikelihood = (double ***) malloc(sizeof(double **)*data->D);
+	for(d=0; d<data->D; d++){
+		documents* doc = &(data->docs[d]);
+
+		stnLikelihood[d] = (double **)malloc(sizeof(double *)*doc->S);
+		for(i=0; i<doc->S; i++){
+
+			stnLikelihood[d][i] = (double *)malloc(sizeof(double )*doc->C);
+
+			for(c=0; c<doc->C; c++){
+				stnLikelihood[d][i][c] = 0;
+			}
+		}
+	}
+
+	retrieveChild4Stn(data, params, latent, counts, stnLikelihood);
+
+	sprintf(dir, "%s", odir);
+
+	sprintf(fname, "%s/childLikelihood", dir);
+	fChild = fopen(fname, "w");
+
+	printf("write file\n");
+	for(d=0; d<data->D; d++){
+		documents* doc = &(data->docs[d]);
+		// printf("finish writing doc %d\n", d);
+		fprintf(fChild, "%d %d\n", d+1, doc->S);
+		for(i=0; i<doc->S; i++){
+			fprintf(fChild, "%d ", i+1);
+			for(c=0; c<doc->C; c++){
+				fprintf(fChild, "%d:%.3f ", c+1, stnLikelihood[d][i][c]);
+			}
+			fprintf(fChild, "\n");
+		}
+	}
+
+	fclose(fChild);
+	for(d=0; d<data->D; d++){
+		documents* doc = &(data->docs[d]);
+
+		for(i=0; i<doc->S; i++){
+
+			free(stnLikelihood[d][i]);
+		}
+
+		free(stnLikelihood[d]);
+	}
+
+}
+
+void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts, double ***stnLikelihood){
+	int d=0, i=0, c=0, s=0, w=0, n=0, v=0, k=0;
+	double likelihood=0, tProb=0, wordLikelihood=0, theta=0, beta=0;
+	double eps = 1e-10;
+
+	for(d=0; d<data->D; d++){
+		documents *doc = &(data->docs[d]);
+
+		for(i=0; i<doc->S; i++){
+			sentence *stn = &(doc->sents[i]);
+			
+			for(c=0; c<doc->C; c++){
+				likelihood = 0;
+				comment *cmnt = &(doc->cmnts[c]);
+
+				//p(t=1)
+				tProb = 0;
+				for(n=0; n<cmnt->N; n++){
+					tProb += latent->t[d][c][n];
+				}
+
+				tProb = tProb*1.0/cmnt->N;
+
+				for(n=0; n<stn->N; n++){
+					wordLikelihood=0;
+					v = stn->words[n];
+					// printf("word n: %d\n", n);
+
+					for(k=0; k<params->K+1; k++){
+
+						if(k==params->K){
+							theta = 1-tProb;
+							if((theta > latent->y_dist[d][c][k])&&(theta < latent->y_dist[d][c][k]))
+								printf("error\n");
+						
+							// theta = latent->y_dist[k];
+							// 1-tProb;
+						}else{
+							theta = (tProb)*(latent->y_dist[d][c][k]);
+							// theta = (tProb)*(counts->m_1[d][c][k]*1.0/counts->m_1k[d][c]);
+						}
+
+						beta = latent->beta[k][v];
+
+						// if (params->trte == 1) beta = latent->beta[k][v];
+						// else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+
+						// printf("theta: %lf\n", theta);
+						// printf("beta: %lf\n", beta);
+						// printf("beta*theta: %lf\n", beta*theta);
+
+
+						wordLikelihood += theta*beta;
+						// printf("wordLikelihood: %lf\n", wordLikelihood);
+
+					}
+// 
+					// printf("wordLikelihood: %lf\n", wordLikelihood);
+
+					if (wordLikelihood < eps) {
+				//		printf("stn word like:%lf\n",wordLikelihood);
+						// debug("stn word like too small");
+					}
+
+					likelihood += log(wordLikelihood+eps);
+
+				}
+
+				stnLikelihood[d][i][c] = likelihood;
+			}
+		}
+	}
+}
+
+void printChild4Stn(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts){
+	int d, i, n, k, a, c, j, v, sum, state;
+
+	//[d][s][c]
+	double ***stnLikelihood; 
+	char fname[500];
+	char dir[1000];
+
+	FILE *fChild = NULL;
+
+	stnLikelihood = (double ***) malloc(sizeof(double **)*data->D);
+	for(d=0; d<data->D; d++){
+		documents* doc = &(data->docs[d]);
+
+		stnLikelihood[d] = (double **)malloc(sizeof(double *)*doc->S);
+		for(i=0; i<doc->S; i++){
+
+			stnLikelihood[d][i] = (double *)malloc(sizeof(double )*doc->C);
+
+			for(c=0; c<doc->C; c++){
+				stnLikelihood[d][i][c] = 0;
+			}
+		}
+	}
+
+	retrieveChild4Stn(data, params, latent, counts, stnLikelihood);
+
+	sprintf(dir, "%s", odir);
+
+	sprintf(fname, "%s/childLikelihood", dir);
+	fChild = fopen(fname, "w");
+
+	printf("write file\n");
+	for(d=0; d<data->D; d++){
+		documents* doc = &(data->docs[d]);
+		// printf("finish writing doc %d\n", d);
+		fprintf(fChild, "%d %d\n", d+1, doc->S);
+		for(i=0; i<doc->S; i++){
+			fprintf(fChild, "%d ", i+1);
+			for(c=0; c<doc->C; c++){
+				fprintf(fChild, "%d:%.3f ", c+1, stnLikelihood[d][i][c]);
+			}
+			fprintf(fChild, "\n");
+		}
+	}
+
+	fclose(fChild);
+	for(d=0; d<data->D; d++){
+		documents* doc = &(data->docs[d]);
+
+		for(i=0; i<doc->S; i++){
+
+			free(stnLikelihood[d][i]);
+		}
+
+		free(stnLikelihood[d]);
+	}
+
+}
+
+void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts, double ***stnLikelihood){
+	int d=0, i=0, c=0, s=0, w=0, n=0, v=0, k=0;
+	double likelihood=0, tProb=0, wordLikelihood=0, theta=0, beta=0;
+	double eps = 1e-10;
+
+	for(d=0; d<data->D; d++){
+		documents *doc = &(data->docs[d]);
+
+		for(i=0; i<doc->S; i++){
+			sentence *stn = &(doc->sents[i]);
+			
+			for(c=0; c<doc->C; c++){
+				likelihood = 0;
+				comment *cmnt = &(doc->cmnts[c]);
+
+				//p(t=1)
+				tProb = 0;
+				for(n=0; n<cmnt->N; n++){
+					tProb += latent->t[d][c][n];
+				}
+
+				tProb = tProb*1.0/cmnt->N;
+
+				for(n=0; n<stn->N; n++){
+					wordLikelihood=0;
+					v = stn->words[n];
+					// printf("word n: %d\n", n);
+
+					for(k=0; k<params->K+1; k++){
+
+						if(k==params->K){
+							theta = 1-tProb;
+							if((theta > latent->y_dist[d][c][k])&&(theta < latent->y_dist[d][c][k]))
+								printf("error\n");
+						
+							// theta = latent->y_dist[k];
+							// 1-tProb;
+						}else{
+							theta = (tProb)*(latent->y_dist[d][c][k]);
+							// theta = (tProb)*(counts->m_1[d][c][k]*1.0/counts->m_1k[d][c]);
+						}
+
+						beta = latent->beta[k][v];
+
+						// if (params->trte == 1) beta = latent->beta[k][v];
+						// else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+
+						// printf("theta: %lf\n", theta);
+						// printf("beta: %lf\n", beta);
+						// printf("beta*theta: %lf\n", beta*theta);
+
+
+						wordLikelihood += theta*beta;
+						// printf("wordLikelihood: %lf\n", wordLikelihood);
+
+					}
+// 
+					// printf("wordLikelihood: %lf\n", wordLikelihood);
+
+					if (wordLikelihood < eps) {
+				//		printf("stn word like:%lf\n",wordLikelihood);
+						// debug("stn word like too small");
+					}
+
+					likelihood += log(wordLikelihood+eps);
+
+				}
+
+				stnLikelihood[d][i][c] = likelihood;
+			}
+		}
+	}
 }
 
 double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token){

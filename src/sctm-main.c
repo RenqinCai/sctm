@@ -3,6 +3,8 @@ gsl_rng* RANDOM_NUMBER = NULL;
 
 void gibbs(char* artf, char* cmntf, char* odir, int trte, int topics, char* modelName) {
 
+	double perplexity = 0;
+
 	if (trte == 0)
 		make_directory(odir);
 	sctm_params* params = get_params(trte, topics, modelName);
@@ -31,7 +33,15 @@ void gibbs(char* artf, char* cmntf, char* odir, int trte, int topics, char* mode
 	printf("\n\nInference done.\n");
 	fflush(stdout);
 
-	// assignment(odir, data, params, latent, counts, params->ITER+1);
+	assignment(odir, data, params, latent, counts, params->ITER+1);
+
+	// if(params->trte == 1){
+	// 	perplexity = compute_perplexity(odir, data, params, latent, counts);
+	// 	printf("\nperplexity %.3f", perplexity);
+	// }
+
+	printChild4Stn(odir, data, params, latent, counts);
+
 
 	free_vars(data, params, latent, counts);
 	free_params(params);
