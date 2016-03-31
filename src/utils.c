@@ -136,13 +136,14 @@ double norm_diff_2(double* x, double* y, int K, int sq) {
  */
 
 double log_sum(double log_a, double log_b) {
-	double v;
+	double v=0;
 
 	if (log_a < log_b) {
 		v = log_b + log(1 + exp(log_a - log_b));
 	} else {
 		v = log_a + log(1 + exp(log_b - log_a));
 	}
+	// printf("v:l%f\n", v);
 	return (v);
 }
 

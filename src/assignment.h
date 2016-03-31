@@ -33,4 +33,8 @@ void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, 
 
 void printChild4Stn(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts);
 
+void printChild4Parent(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts);
+
+void retrieveChild4Parent(sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts, double **docLikelihood);
+
 #endif

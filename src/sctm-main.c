@@ -41,7 +41,7 @@ void gibbs(char* artf, char* cmntf, char* odir, int trte, int topics, char* mode
 	// }
 
 	printChild4Stn(odir, data, params, latent, counts);
-
+	printChild4Parent(odir, data, params, latent, counts);
 
 	free_vars(data, params, latent, counts);
 	free_params(params);
