@@ -251,18 +251,6 @@ double compute_perplexity(char* odir, sctm_data* data, double *docLogLikelihood,
 	return perplexity;
 }
 
-double logSum(double log_a, double log_b){
-	if(log_a < 1e-20)
-		return log_b;
-	else if (log_b < 1e-20)
-		return log_a;
-	else if(log_a < log_b)
-		return log_b+log(1 + exp(log_a-log_b));
-	else 
-		return log_b+log(1 + exp(log_a-log_b));
-
-}
-
 void printChild4Stn(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts){
 	int d, i, n, k, a, c, j, v, sum, state;
 
@@ -361,8 +349,10 @@ void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, 
 							// theta = latent->y_dist[k];
 							// 1-tProb;
 						}else{
-							theta = (tProb)*(latent->y_dist[d][c][k]);
-							// theta = (tProb)*(counts->m_1[d][c][k]*1.0/counts->m_1k[d][c]);
+							if(counts->m_1k[d][c]==0)
+								continue;
+							// theta = (tProb)*(latent->y_dist[d][c][k]);
+							theta = (tProb)*(counts->m_1[d][c][k]*1.0/counts->m_1k[d][c]);
 						}
 
 						beta = latent->beta[k][v];
@@ -397,67 +387,57 @@ void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, 
 	}
 }
 
-void printChild4Stn(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts){
+void printChild4Parent(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts){
 	int d, i, n, k, a, c, j, v, sum, state;
 
-	//[d][s][c]
-	double ***stnLikelihood; 
+	//[d][c]
+	double **docLikelihood; 
 	char fname[500];
 	char dir[1000];
 
 	FILE *fChild = NULL;
 
-	stnLikelihood = (double ***) malloc(sizeof(double **)*data->D);
+	docLikelihood = (double **) malloc(sizeof(double *)*data->D);
 	for(d=0; d<data->D; d++){
 		documents* doc = &(data->docs[d]);
 
-		stnLikelihood[d] = (double **)malloc(sizeof(double *)*doc->S);
-		for(i=0; i<doc->S; i++){
-
-			stnLikelihood[d][i] = (double *)malloc(sizeof(double )*doc->C);
-
-			for(c=0; c<doc->C; c++){
-				stnLikelihood[d][i][c] = 0;
-			}
+		docLikelihood[d] = (double *)malloc(sizeof(double )*doc->C);
+		
+		for(c=0; c<doc->C; c++){
+			docLikelihood[d][c] = 0;
 		}
+		
 	}
 
-	retrieveChild4Stn(data, params, latent, counts, stnLikelihood);
+	retrieveChild4Parent(data, params, latent, counts, docLikelihood);
 
 	sprintf(dir, "%s", odir);
 
-	sprintf(fname, "%s/childLikelihood", dir);
+	sprintf(fname, "%s/childLikelihood4Parent", dir);
 	fChild = fopen(fname, "w");
 
 	printf("write file\n");
 	for(d=0; d<data->D; d++){
 		documents* doc = &(data->docs[d]);
 		// printf("finish writing doc %d\n", d);
-		fprintf(fChild, "%d %d\n", d+1, doc->S);
-		for(i=0; i<doc->S; i++){
-			fprintf(fChild, "%d ", i+1);
-			for(c=0; c<doc->C; c++){
-				fprintf(fChild, "%d:%.3f ", c+1, stnLikelihood[d][i][c]);
-			}
-			fprintf(fChild, "\n");
+		fprintf(fChild, "%d\n", d+1);
+		for(c=0; c<doc->C; c++){
+			fprintf(fChild, "%d:%.3f\t", c+1, docLikelihood[d][c]);
 		}
+		fprintf(fChild, "\n");
+		
 	}
 
 	fclose(fChild);
 	for(d=0; d<data->D; d++){
 		documents* doc = &(data->docs[d]);
 
-		for(i=0; i<doc->S; i++){
-
-			free(stnLikelihood[d][i]);
-		}
-
-		free(stnLikelihood[d]);
+		free(docLikelihood[d]);
 	}
 
 }
 
-void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts, double ***stnLikelihood){
+void retrieveChild4Parent(sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts, double **docLikelihood){
 	int d=0, i=0, c=0, s=0, w=0, n=0, v=0, k=0;
 	double likelihood=0, tProb=0, wordLikelihood=0, theta=0, beta=0;
 	double eps = 1e-10;
@@ -465,21 +445,20 @@ void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, 
 	for(d=0; d<data->D; d++){
 		documents *doc = &(data->docs[d]);
 
-		for(i=0; i<doc->S; i++){
-			sentence *stn = &(doc->sents[i]);
+		for(c=0; c<doc->C; c++){
+			likelihood = 0;
+			comment *cmnt = &(doc->cmnts[c]);
 			
-			for(c=0; c<doc->C; c++){
-				likelihood = 0;
-				comment *cmnt = &(doc->cmnts[c]);
+			tProb = 0;
+			for(n=0; n<cmnt->N; n++){
+				tProb += latent->t[d][c][n];
+			}
+			tProb = tProb*1.0/cmnt->N;
 
+			for(i=0; i<doc->S; i++){
+				sentence *stn = &(doc->sents[i]);
+		
 				//p(t=1)
-				tProb = 0;
-				for(n=0; n<cmnt->N; n++){
-					tProb += latent->t[d][c][n];
-				}
-
-				tProb = tProb*1.0/cmnt->N;
-
 				for(n=0; n<stn->N; n++){
 					wordLikelihood=0;
 					v = stn->words[n];
@@ -491,30 +470,22 @@ void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, 
 							theta = 1-tProb;
 							if((theta > latent->y_dist[d][c][k])&&(theta < latent->y_dist[d][c][k]))
 								printf("error\n");
-						
-							// theta = latent->y_dist[k];
-							// 1-tProb;
+							else{
+
+							}
 						}else{
-							theta = (tProb)*(latent->y_dist[d][c][k]);
-							// theta = (tProb)*(counts->m_1[d][c][k]*1.0/counts->m_1k[d][c]);
+							if(counts->m_1k[d][c]==0)
+								continue;
+							theta = (tProb)*(counts->m_1[d][c][k]*1.0/counts->m_1k[d][c]);
 						}
 
-						beta = latent->beta[k][v];
-
-						// if (params->trte == 1) beta = latent->beta[k][v];
-						// else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
-
-						// printf("theta: %lf\n", theta);
-						// printf("beta: %lf\n", beta);
-						// printf("beta*theta: %lf\n", beta*theta);
-
+						if (params->trte == 1) beta = latent->beta[k][v];
+						else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
 
 						wordLikelihood += theta*beta;
 						// printf("wordLikelihood: %lf\n", wordLikelihood);
 
 					}
-// 
-					// printf("wordLikelihood: %lf\n", wordLikelihood);
 
 					if (wordLikelihood < eps) {
 				//		printf("stn word like:%lf\n",wordLikelihood);
@@ -525,8 +496,9 @@ void retrieveChild4Stn(sctm_data* data, sctm_params*params, sctm_latent*latent, 
 
 				}
 
-				stnLikelihood[d][i][c] = likelihood;
 			}
+
+			docLikelihood[d][c] = likelihood;
 		}
 	}
 }
@@ -562,6 +534,8 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 						if(counts->n_ikv[d][j]==0)
 							continue;
 						theta += counts->n_iv[d][j][k]*1.0 *counts->n_kv[d][i][j]/ (counts->n_ikv[d][j]*counts->n_jkv[d][i]);
+						if(isnan(theta))
+							debug("nan parent theta\n");
 					}
 
 
@@ -583,39 +557,6 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 		
 		}
 		// printf("likelihood%lf\n", likelihood);
-
-
-	// for(d=0; d<data->D; d++){
-	// 	documents *doc = &(data->docs[d]);
-	// 	likelihood = 0;
-	// 	for(i=0; i<doc->S; i++){
-	// 		sentence *sent = &(doc->sents[i]);
-	// 		for(n=0; n<sent->N; n++){
-	// 			wordNum += 1;
-	// 			like = 0;
-	// 			for (k=0; k < params->K; k++) {
-	// 				v = sent->words[n];
-	// 				for(j=0; j)
-	// 				j = latent->b[d][i][n];
-
-	// 				if (params->trte == 1) beta = latent->beta[k][v];
-	// 				else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
-
-	// 				if(counts->n_iv[d][j][k] < 0 || counts->n_ikv[d][j] <= 0) debug("in lik djk 0");
-
-	// 				if (counts->n_ikv[d][j] == 0) continue;
-	// 				theta = counts->n_iv[d][j][k]*1.0 / counts->n_ikv[d][j];
-	// 				like += beta*theta;
-	// 			}
-	// 			if (like < eps) {
-	// 				printf("parent like:%lf\n",like);
-	// 				//debug("like too small");
-	// 			}
-	// 			likelihood += log(like + eps);
-	// 		}
-			
-	// 	}
-		// printf("parent like:%lf\n",likelihood);
 		for(i=0; i<doc->C; i++){
 			double tProb = 0;
 			comment* cmnt = &(doc->cmnts[i]);
@@ -638,15 +579,6 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 					tempLike = 0;
 					v = cmnt->words[n];
 
-					// for(t=0; t<2; t++){
-					// 	if(t==0)
-					// 		theta = (counts->m_1[d][i][k])*1.0/cmnt->N)*(latent->t[d][i]*1.0/cmnt->N);
-					// 	else
-					// 		theta += latent->t[d][i]*1.0/cmnt->N;
-					// 	t = latent->t[d][i][n];
-					// }
-					
-					// if (t == 0) k = params->K;
 					if (params->trte == 1) beta = latent->beta[k][v];
 					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
 
@@ -657,55 +589,58 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 						// printf("theta 0 too small%lf", theta);
 					}	// theta = (cmnt->N-counts->m_1k[d][i]+eps)*1.0/(cmnt->N+eps*(params->K+1));
 					else{
+						if(counts->m_1k[d][i]==0)
+							continue;
 						theta = (tProb)*(counts->m_1[d][i][k]*1.0/counts->m_1k[d][i]);
-						// printf("theta 1 too small%lf", theta);
-
-						// theta = (counts->m_1[d][i][k]+eps)*1.0/(cmnt->N+eps*(params->K+1));
+						if(isnan(theta)){
+							printf("tprob %lf\n", tProb);
+							debug("nan child theta\n");
+						}
 					}
-
-				// tempLike = log(theta)+log(beta);
-				// printf("tempLike:%lf\n",tempLike);
-				// if(like=0)
-				// 	like = tempLike;
-				// else 
-				// 	like = logSum(like, tempLike);
 					
 					like += beta*theta;
-				// like += beta;
-				// printf("tempLike:%lf \t theta:%lf \t beta:%lf\n", like, theta, beta);
 				}
 
 			
 				if (like < eps) {
-					printf("child like:%lf\n",like);
+					// printf("child like:%lf\n",like);
 					debug("child like too small");
 				}
-		// likelihood += like;
+
 				likelihood += log(like + eps);
+				// printf("like%lf\n", like);
+				if(isnan(likelihood)){
+					// printf("nan likelihood\n");
+					debug("nan likelihood");
+				}
 			}
 		
 		}
 
-		// totalLikelihood += likelihood;
-		// printf("child like:%lf\n",likelihood);
 
-		if(!((docLogLikelihood[d]>0)||(docLogLikelihood[d]<0))){
+		if(abs(*(docLogLikelihood+d))<1e-10){
 			// printf("doc LogLikelihood == 0");
 			*(docLogLikelihood+d) = likelihood;
+			// printf("test likelihood\n %lf\n", likelihood);
 		// *(docLogLikelihood+d) += likelihood;
 		}
 		else{
-			// printf("doc LogLikelihood > 0");
-			*(docLogLikelihood+d) = logSum(*(docLogLikelihood+d), likelihood);
-			// printf("end value doc LogLikelihood%.lf\n", exp(*(docLogLikelihood+d)));
+			// printf("previous likelihood, %f\n", *(docLogLikelihood+d));
+			// printf("current likelihood, %f\n", likelihood);
+			double postLikelihood = log_sum(*(docLogLikelihood+d), likelihood);
+			// printf("post likelihood, %f\n", postLikelihood);
+			*(docLogLikelihood+d) = postLikelihood;
+			
+			double a = 10;
+			if(isnan(postLikelihood)){
+				printf("error\n");
+				debug("nan error");
+			}
 		}
 	}
 
 	// *docLogLikelihood = totalLikelihood;
 	*token = wordNum;
-	// for(d=0; d<data->D; d++){
-	// 	printf("end value doc LogLikelihood%.3f\n", *(docLogLikelihood+d));
-	// }
 
 	return 0;
 }

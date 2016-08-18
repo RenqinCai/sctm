@@ -40,8 +40,8 @@ void gibbs(char* artf, char* cmntf, char* odir, int trte, int topics, char* mode
 	// 	printf("\nperplexity %.3f", perplexity);
 	// }
 
-	printChild4Stn(odir, data, params, latent, counts);
-
+	// printChild4Stn(odir, data, params, latent, counts);
+	// printChild4Parent(odir, data, params, latent, counts);
 
 	free_vars(data, params, latent, counts);
 	free_params(params);
