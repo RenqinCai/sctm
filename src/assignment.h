@@ -15,17 +15,17 @@
 void assignment(char* odir, sctm_data* cdata, sctm_params* params,
 		sctm_latent* latent, sctm_counts* counts, int iter);
 
-// double compute_perplexity(char* odir, sctm_data* cdata, sctm_params* params,
-// 		sctm_latent* latent, sctm_counts* counts);
+double compute_perplexity(char* odir, sctm_data* cdata, sctm_params* params,
+		sctm_latent* latent, sctm_counts* counts);
 // double compute_perplexity(char* odir, sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood);
 
-// double compute_likelihood(sctm_data* cdata, sctm_params* params,
-// 		sctm_latent* latent, sctm_counts* counts, double* result, int* tokens);
+double compute_likelihood_art(sctm_data* cdata, sctm_params* params,
+		sctm_latent* latent, sctm_counts* counts, double* result, int* tokens);
 
-// double compute_likelihood_cmnt(sctm_data* cdata, sctm_params* params,
-// 		sctm_latent* latent, sctm_counts* counts, double* result, int* tokens);
+double compute_likelihood_cmnt(sctm_data* cdata, sctm_params* params,
+		sctm_latent* latent, sctm_counts* counts, double* result, int* tokens);
 
-double compute_perplexity(char* odir, sctm_data* data, double *docLogLikelihood, int *count);
+// double compute_perplexity(char* odir, sctm_data* data, double *docLogLikelihood, int *count);
 
 double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token);
 

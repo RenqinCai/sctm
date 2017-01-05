@@ -144,6 +144,7 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 				}
 //				fprintf(fxi, "\n");
 				fprintf(fxi_prob, "\n");
+				// printf("comment word Num\t%d", cmnt->N);
 				for (n = 0; n < cmnt->N; n++) {
 //					fprintf(ft, "%d ", latent->t[d][c][n]);
 //					fprintf(fy, "%d ", latent->y[d][c][n]);
@@ -157,6 +158,7 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 					if (state > 0 || iter == params->burn_in) {
 						latent->y_dist[d][c][k] = (state*latent->y_dist[d][c][k] + y_dist[k]/cmnt->N)/(state+1);
 						fprintf(fy_dist, "%.4f ", latent->y_dist[d][c][k]);
+						// printf("here 1");
 					}
 					else if (iter > params->ITER) fprintf(fy_dist, "%.4f ", latent->y_dist[d][c][k]);
 					else fprintf(fy_dist, "%.4f ", y_dist[k]/cmnt->N);
@@ -221,35 +223,35 @@ void assignment(char* odir, sctm_data* data, sctm_params* params,
 
 }
 
-double compute_perplexity(char* odir, sctm_data* data, double *docLogLikelihood, int *count){
+// double compute_perplexity(char* odir, sctm_data* data, double *docLogLikelihood, int *count){
 	
-	printf("compute perplexity");
-	int d = 0, i=0;
-	double totalDocLogLikelihood = 0;
-	double perplexity = 0;
-	double totalWords = 0;
+// 	printf("compute perplexity");
+// 	int d = 0, i=0;
+// 	double totalDocLogLikelihood = 0;
+// 	double perplexity = 0;
+// 	double totalWords = 0;
 
-	for(d=0; d<data->D; d++){
-		docLogLikelihood[d] = docLogLikelihood[d]-log(*count);
-		printf("\ndocLogLikelihood %.3f", docLogLikelihood[d]);
-		fflush(stdout);
-		totalDocLogLikelihood += docLogLikelihood[d];
-		documents *doc = &(data->docs[d]);
-		totalWords += doc->N;
-		for(i=0; i<doc->C; i++){
-			comment *cmnt = &(doc->cmnts[i]);
-			totalWords += cmnt->N;
-		}
-	}
+// 	for(d=0; d<data->D; d++){
+// 		docLogLikelihood[d] = docLogLikelihood[d]-log(*count);
+// 		printf("\ndocLogLikelihood %.3f", docLogLikelihood[d]);
+// 		fflush(stdout);
+// 		totalDocLogLikelihood += docLogLikelihood[d];
+// 		documents *doc = &(data->docs[d]);
+// 		totalWords += doc->N;
+// 		for(i=0; i<doc->C; i++){
+// 			comment *cmnt = &(doc->cmnts[i]);
+// 			totalWords += cmnt->N;
+// 		}
+// 	}
 
-	perplexity = totalDocLogLikelihood/totalWords;
-	printf("\nperplexity---- %.3f %.3f", perplexity, totalWords);
-	fflush(stdout);
-	perplexity = exp(-perplexity);
-	printf("\nperplexity %.3f", perplexity);
-	fflush(stdout);
-	return perplexity;
-}
+// 	perplexity = totalDocLogLikelihood/totalWords;
+// 	printf("\nperplexity---- %.3f %.3f", perplexity, totalWords);
+// 	fflush(stdout);
+// 	perplexity = exp(-perplexity);
+// 	printf("\nperplexity %.3f", perplexity);
+// 	fflush(stdout);
+// 	return perplexity;
+// }
 
 void printChild4Stn(char* odir, sctm_data* data, sctm_params*params, sctm_latent*latent, sctm_counts* counts){
 	int d, i, n, k, a, c, j, v, sum, state;
@@ -645,147 +647,150 @@ double compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* la
 	return 0;
 }
 
+double compute_perplexity(char* odir, sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts) {
+	// printf("perplexity 4 \n");
+	fflush(stdout);
 
 
+	double likelihood_art, likelihood_cmnt, perp;
+	int DxN_art, DxN_cmnt, totalWords, d;
+	double totalLikelihood = 0;
+	compute_likelihood_art(cdata, params, latent, counts, &likelihood_art, &DxN_art);
+	printf("perplexity article \n");
+	fflush(stdout);
 
-// double compute_perplexity(char* odir, sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts) {
-// 	double likelihood_art, likelihood_cmnt, perp;
-// 	int DxN_art, DxN_cmnt, totalWords;
-// 	double totalLikelihood = 0;
-// 	// compute_likelihood(cdata, params, latent, counts, &likelihood_art, &DxN_art);
-// 	// compute_likelihood_cmnt(cdata, params, latent, counts, &likelihood_cmnt, &DxN_cmnt);
-// // totalWords = DxN_art+DxN_cmnt;
-// 	// totalLikelihood = likelihood_art+likelihood_cmnt;
-// 	//double perp = exp(-(likelihood));
-// 	compute_likelihood(cdata, params, latent, counts, &totalLikelihood, &totalWords);
-//  // compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token){
-
+	compute_likelihood_cmnt(cdata, params, latent, counts, &likelihood_cmnt, &DxN_cmnt);
+	printf("perplexity comment \n");
+	fflush(stdout);
+	totalWords = DxN_art+DxN_cmnt;
+	totalLikelihood = likelihood_art+likelihood_cmnt;
+	//double perp = exp(-(likelihood));
+	// compute_likelihood(cdata, params, latent, counts, docLogLikelihood, &totalWords);
+ // compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token)
 	
-// 	char fname[500];
-// 	FILE *fl;
-// 	sprintf(fname, "%s/perplexity.txt", odir);
-// 	fl = fopen(fname, "a");
+	char fname[500];
+	FILE *fl;
+	sprintf(fname, "%s/perplexity.txt", odir);
+	fl = fopen(fname, "a");
 	
-// 	perp = exp(-(totalLikelihood)/(totalWords));
+	perp = exp(-(totalLikelihood)/(totalWords));
 
-// 	printf("perplexity %.3f %d\n", perp, totalWords);
-// 	fprintf(fl, "perplexity: %.2f\n", perp);
-// 	fclose(fl);
+	printf("perplexity %.3f %d\n", perp, totalWords);
+	fprintf(fl, "perplexity: %.2f\n", perp);
+	fclose(fl);
 
-// 	return(perp);
-// }
+	return(perp);
+}
 
-// double compute_perplexity(char* odir, sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood) {
-// 	double likelihood_art, likelihood_cmnt, perp;
-// 	int DxN_art, DxN_cmnt, totalWords, d;
-// 	double totalLikelihood = 0;
-// 	// compute_likelihood(cdata, params, latent, counts, &likelihood_art, &DxN_art);
-// 	// compute_likelihood_cmnt(cdata, params, latent, counts, &likelihood_cmnt, &DxN_cmnt);
-// // totalWords = DxN_art+DxN_cmnt;
-// 	// totalLikelihood = likelihood_art+likelihood_cmnt;
-// 	//double perp = exp(-(likelihood));
-// 	compute_likelihood(cdata, params, latent, counts, docLogLikelihood, &totalWords);
-//  // compute_likelihood(sctm_data* data, sctm_params * params, sctm_latent* latent, sctm_counts* counts, double *docLogLikelihood, int *token){
+double compute_likelihood_art(sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts, double* result, int* tokens) {
+	int d, i, j, k, v, n;//, t, l;
+	double likelihood = 0;
+	double beta,like, theta, eps;
 
-// 	for(d=0; d<cdata->D; d++)
-// 		totalLikelihood += docLogLikelihood[d];
+	int DxN = 0;
+	printf("article likelihood");
+	eps = 1e-10;
+	for (d=0; d<cdata->D; d++) {
+		documents* doc = &(cdata->docs[d]);
+
+		for (i=0; i < doc->S; i++) {
+			sentence* sent = &(doc->sents[i]);
+			for (n=0; n < sent->N; n++){
+				like = 0;
+				for (k=0; k < params->K; k++) {
+					v = sent->words[n];
+
+					if (params->trte == 1) beta = latent->beta[k][v];
+					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+
+					if (params->trte != 1){
+						j = latent->b[d][i][n];
+						if(counts->n_iv[d][j][k] < 0 || counts->n_ikv[d][j] <= 0) debug("in lik djk 0");
+						if (counts->n_ikv[d][j] == 0) continue;
+						theta = counts->n_iv[d][j][k]*1.0 / counts->n_ikv[d][j];
+					}else{
+						theta = latent->z_distDoc[d][k];
+					}
+
+					
+					like += beta*theta;
+				}
+				if (like < eps) {
+					printf("like:%lf\n",like);
+					//debug("like too small");
+				}
+				likelihood += log(like + eps);
+				DxN += 1;
+			}
+		}
+	}
 	
-// 	char fname[500];
-// 	FILE *fl;
-// 	sprintf(fname, "%s/perplexity.txt", odir);
-// 	fl = fopen(fname, "a");
-	
-// 	perp = exp(-(totalLikelihood)/(totalWords));
+	*result = likelihood;
+	*tokens = DxN;
 
-// 	printf("perplexity %.3f %d\n", perp, totalWords);
-// 	fprintf(fl, "perplexity: %.2f\n", perp);
-// 	fclose(fl);
+	return(likelihood/DxN);
+}
 
-// 	return(perp);
-// }
+double compute_likelihood_cmnt(sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts, double* result, int* tokens) {
+	int d, i, t, k, v, n;//, t, l;
+	double likelihood = 0;
+	double beta,like, eps, theta, tProb;
 
-// double compute_likelihood(sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts, double* result, int* tokens) {
-// 	int d, i, j, k, v, n;//, t, l;
-// 	double likelihood = 0;
-// 	double beta,like, theta, eps;
+	int DxN = 0;
 
-// 	int DxN = 0;
+	eps = 1e-10;
+	for (d=0; d<cdata->D; d++) {
+		documents* doc = &(cdata->docs[d]);
+		for (i=0; i < doc->C; i++) {
 
-// 	eps = 1e-10;
-// 	for (d=0; d<cdata->D; d++) {
-// 		documents* doc = &(cdata->docs[d]);
+			// printf("comment 1 \n");
+			// fflush(stdout);
 
-// 		for (i=0; i < doc->S; i++) {
-// 			sentence* sent = &(doc->sents[i]);
-// 			for (n=0; n < sent->N; n++){
-// 				like = 0;
-// 				for (k=0; k < params->K; k++) {
-// 					v = sent->words[n];
-// 					j = latent->b[d][i][n];
+			comment* cmnt = &(doc->cmnts[i]);
+			tProb = 0;
+			for(n=0; n<cmnt->N; n++){
+				tProb += latent->t[d][i][n];
+			}
+			// printf("comment 2 \n");
+			// fflush(stdout);
 
-// 					if (params->trte == 1) beta = latent->beta[k][v];
-// 					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+			for (n=0; n < cmnt->N; n++) {
+				like = 0;
+				v = cmnt->words[n];
 
-// 					if(counts->n_iv[d][j][k] < 0 || counts->n_ikv[d][j] <= 0) debug("in lik djk 0");
 
-// 					if (counts->n_ikv[d][j] == 0) continue;
-// 					theta = counts->n_iv[d][j][k]*1.0 / counts->n_ikv[d][j];
-// 					like += beta*theta;
-// 				}
-// 				if (like < eps) {
-// 					printf("like:%lf\n",like);
-// 					//debug("like too small");
-// 				}
-// 				likelihood += log(like + eps);
-// 				DxN += 1;
-// 			}
-// 		}
-// 	}
-	
-// 	*result = likelihood;
-// 	*tokens = DxN;
+				// if(tProb == (double)counts->m_1k[d][i])
+				// 	printf("ok");
 
-// 	return(likelihood/DxN);
-// }
+				tProb = tProb*1.0/cmnt->N;
 
-// double compute_likelihood_cmnt(sctm_data* cdata, sctm_params* params, sctm_latent* latent, sctm_counts* counts, double* result, int* tokens) {
-// 	int d, i, t, k, v, n;//, t, l;
-// 	double likelihood = 0;
-// 	double beta,like, eps;
+				for(k=0; k<params->K; k++){
 
-// 	int DxN = 0;
+					if(params->trte==1) theta = latent->y_dist[d][i][k];
+					else theta = counts->m_1[d][i][k]*1.0/cmnt->N;
 
-// 	eps = 1e-10;
-// 	for (d=0; d<cdata->D; d++) {
-// 		documents* doc = &(cdata->docs[d]);
-// 		for (i=0; i < doc->C; i++) {
-// 			comment* cmnt = &(doc->cmnts[i]);
-// 			for (n=0; n < cmnt->N; n++) {
-// 				like = 0;
-// 				k = latent->y[d][i][n];
-// 				v = cmnt->words[n];
-// 				t = latent->t[d][i][n];
-// 				if (t == 0) k = params->K;
-// 				if (params->trte == 1) beta = latent->beta[k][v];
-// 				else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
+					if (params->trte == 1) beta = latent->beta[k][v];
+					else beta = counts->n_dij[k][v] *1.0 / counts->n_dijv[k];
 
-// 				if(t==1 && (counts->m[d][i][k] < 0 || counts->m_k[d][i] <= 0)) debug("in lik djk 0");
+					like += theta*beta*tProb;
+				}
+				// printf("comment 3 \n");
+				// fflush(stdout);
 
-// 				like += beta;
+				like += (1-tProb)*latent->beta[params->K][v];
+				
+				if (like < eps) {
+					printf("like:%lf\n",like);
+					debug("like too small");
+				}
+				likelihood += log(like + eps);
+				DxN += 1;
+			}
+		}
+	}
+	*result = likelihood;
+	*tokens = DxN;
 
-// 				//}
-// 				if (like < eps) {
-// 					printf("like:%lf\n",like);
-// 					debug("like too small");
-// 				}
-// 				likelihood += log(like + eps);
-// 				DxN += 1;
-// 			}
-// 		}
-// 	}
-// 	*result = likelihood;
-// 	*tokens = DxN;
-
-// 	return(likelihood/DxN);
-// }
+	return(likelihood/DxN);
+}
 

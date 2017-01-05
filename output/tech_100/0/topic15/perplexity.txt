@@ -1,0 +1,6 @@
+perplexity: 2724.53
+perplexity: 1804.24
+perplexity: 2082.92
+perplexity: 1802.20
+perplexity: 1802.83
+perplexity: 1802.12

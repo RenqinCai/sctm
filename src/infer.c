@@ -3,17 +3,7 @@
 void infer (char* odir, sctm_data* data, sctm_params* params,
 		sctm_latent* latent, sctm_counts* counts) {
 	int iter, d;
-	double* docLogLikelihood = (double*) malloc(sizeof(double)*(data->D));
 	int token = 0;
-	int likelihoodCount; 
-
-	likelihoodCount = 0;
-
-	printf("\ninfer---likelihoodcount%d", likelihoodCount);
-
-	for(d=0; d<data->D; d++){
-		*(docLogLikelihood+d) = 0;
-	}
 
 	for (iter = 1; iter < params->ITER+1; iter++) {
 
@@ -50,11 +40,7 @@ void infer (char* odir, sctm_data* data, sctm_params* params,
 
 			// 	// printf("compute_likelihood");
 			// 	// fflush(stdout);
-
-				likelihoodCount += 1;
-				compute_likelihood(data, params, latent, counts, docLogLikelihood, &token);
-				printf("\nlikelihoodcount%d", likelihoodCount);
-				fflush(stdout);
+			fflush(stdout);
 
 			// }
 
@@ -67,23 +53,6 @@ void infer (char* odir, sctm_data* data, sctm_params* params,
 	}
 
 	assignment(odir, data, params, latent, counts, iter);
-	if (params->trte == 1){
-
-
-		// likelihoodCount += 1;
-		// compute_likelihood(data, params, latent, counts, docLogLikelihood, &token);
-		// printf("\nlikelihoodcount%d", likelihoodCount);
-		// fflush(stdout);
-
-			// }
-		printf("\nlikelihoodCount%d", likelihoodCount);
-		compute_perplexity(odir, data, docLogLikelihood, &likelihoodCount);
-	}
-
-
-	// if (params->trte == 1)
-	// 	compute_perplexity(odir, data, params, latent, counts, docLogLikelihood);
-
 
 }
 
